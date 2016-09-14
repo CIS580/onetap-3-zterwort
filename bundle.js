@@ -1,14 +1,22 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-"use strict;"
+"use strict";
 
 /* Classes */
 const Game = require('./game.js');
 const Player = require('./player.js');
+const Snake = require('./snake.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
-var player = new Player({x: 382, y: 460})
+var player = new Player({x: 382, y: 440});
+var snakes = [];
+for(var i=0; i < 20; i++) {
+  snakes.push(new Snake({
+    x: Math.random() * 760,
+    y: Math.random() * 20 + 100
+  }));
+}
 
 /**
  * @function masterLoop
@@ -31,7 +39,8 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-
+  player.update(elapsedTime);
+  snakes.forEach(function(snake) { snake.update(elapsedTime);});
   // TODO: Update the game objects
 }
 
@@ -46,9 +55,10 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "lightblue";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   player.render(elapsedTime, ctx);
+  snakes.forEach(function(snake){snake.render(elapsedTime, ctx);});
 }
 
-},{"./game.js":2,"./player.js":3}],2:[function(require,module,exports){
+},{"./game.js":2,"./player.js":3,"./snake.js":4}],2:[function(require,module,exports){
 "use strict";
 
 /**
@@ -121,6 +131,8 @@ module.exports = exports = Player;
  */
 function Player(position) {
   this.state = "waiting";
+  this.frame = 0;
+  this.timer = 0;
   this.x = position.x;
   this.y = position.y;
   this.width  = 16;
@@ -129,20 +141,26 @@ function Player(position) {
   this.spritesheet.src = encodeURI('assets/link/not link/notlink up.png');
 
   var self = this;
-  window.onmouseclick = function(event) {
-    self.x = event.clientX;
-    self.state = "walking";
+  window.onmousedown = function(event) {
+    if(self.state == "waiting") {
+      self.x = event.clientX;
+      self.state = "walking";
+    }
   }
-
 }
 
 /**
  * @function updates the player object
  * {DOMHighResTimeStamp} time the elapsed time since the last frame
  */
-Player.prototype.update = function(time) {
+Player.prototype.update = function(elapsedTime) {
+  this.timer += elapsedTime;
   switch(this.state) {
     case "walking":
+      if(this.timer > 1000/16) {
+        this.frame = (this.frame + 1) % 4;
+        this.timer = 0;
+      }
       this.y -= 1;
       break;
   }
@@ -158,10 +176,90 @@ Player.prototype.render = function(time, ctx) {
     // image
     this.spritesheet,
     // source rectangle
-    0, 0, this.width, this.height,
+    this.frame * this.width, 0, this.width, this.height,
     // destination rectangle
-    this.x, this.y, this.width, this.height
+    this.x, this.y, 2*this.width, 2*this.height
   );
+}
+
+},{}],4:[function(require,module,exports){
+"use strict";
+
+/**
+ * @module exports the Snake class
+ */
+module.exports = exports = Snake;
+
+/**
+ * @constructor Snake
+ * Creates a new snake object
+ * @param {Postition} position object specifying an x and y
+ */
+function Snake(position) {
+  this.state = (Math.random() > 0.5) ? "left" : "right";
+  this.frame = 0;
+  this.timer = 0;
+  this.x = position.x;
+  this.y = position.y;
+  this.width  = 16;
+  this.height = 16;
+  this.leftBound = position.x - 20;
+  this.rightBound = position.x + 20;
+}
+
+/** Declare spritesheet at the class level */
+Snake.prototype.leftSpritesheet = new Image();
+Snake.prototype.leftSpritesheet.src = 'assets/fang/fang left.png';
+Snake.prototype.rightSpritesheet = new Image();
+Snake.prototype.rightSpritesheet.src = 'assets/fang/fang right.png';
+
+/**
+ * @function updates the player object
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ */
+Snake.prototype.update = function(elapsedTime) {
+  this.timer += elapsedTime;
+  if(this.timer > 1000/6) {
+    this.frame = (this.frame + 1) % 4;
+    this.timer = 0;
+  }
+  switch(this.state) {
+    case "left":
+      this.x -= 0.5;
+      if(this.x < this.leftBound) this.state = "right";
+      break;
+    case "right":
+      this.x += 0.5;
+      if(this.x > this.rightBound) this.state = "left";
+      break;
+  }
+}
+
+/**
+ * @function renders the player into the provided context
+ * {DOMHighResTimeStamp} time the elapsed time since the last frame
+ * {CanvasRenderingContext2D} ctx the context to render into
+ */
+Snake.prototype.render = function(time, ctx) {
+  if(this.state == "right") {
+    ctx.drawImage(
+      // image
+      this.leftSpritesheet,
+      // source rectangle
+      this.frame * this.width, 0, this.width, this.height,
+      // destination rectangle
+      this.x, this.y, 2*this.width, 2*this.height
+    );
+  } else {
+    ctx.drawImage(
+      // image
+      this.rightSpritesheet,
+      // source rectangle
+      this.frame * this.width, 0, this.width, this.height,
+      // destination rectangle
+      this.x, this.y, 2*this.width, 2*this.height
+    );
+  }
 }
 
 },{}]},{},[1]);

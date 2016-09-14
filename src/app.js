@@ -1,13 +1,21 @@
-"use strict;"
+"use strict";
 
 /* Classes */
 const Game = require('./game.js');
 const Player = require('./player.js');
+const Snake = require('./snake.js');
 
 /* Global variables */
 var canvas = document.getElementById('screen');
 var game = new Game(canvas, update, render);
-var player = new Player({x: 382, y: 460})
+var player = new Player({x: 382, y: 440});
+var snakes = [];
+for(var i=0; i < 20; i++) {
+  snakes.push(new Snake({
+    x: Math.random() * 760,
+    y: Math.random() * 20 + 100
+  }));
+}
 
 /**
  * @function masterLoop
@@ -30,7 +38,8 @@ masterLoop(performance.now());
  * the number of milliseconds passed since the last frame.
  */
 function update(elapsedTime) {
-
+  player.update(elapsedTime);
+  snakes.forEach(function(snake) { snake.update(elapsedTime);});
   // TODO: Update the game objects
 }
 
@@ -45,4 +54,5 @@ function render(elapsedTime, ctx) {
   ctx.fillStyle = "lightblue";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   player.render(elapsedTime, ctx);
+  snakes.forEach(function(snake){snake.render(elapsedTime, ctx);});
 }
